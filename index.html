@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>บันทึกเวลา OT</title>
+    
+    <!-- PWA & Android Meta Tags -->
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="บันทึกเวลา OT">
+    
+    <!-- Apple Mobile Web App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="บันทึกเวลา OT">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="manifest.json" id="manifest-link">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Sarabun -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        morning: {
+                            DEFAULT: '#2563eb',
+                            light: '#eff6ff',
+                            border: '#bfdbfe',
+                            dark: '#1d4ed8'
+                        },
+                        evening: {
+                            DEFAULT: '#ea580c',
+                            light: '#fff7ed',
+                            border: '#fed7aa',
+                            dark: '#c2410c'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background-color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 25px rgba(0,0,0,0.08);
+            position: relative;
+        }
+        .touch-active:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+        .page-view {
+            transition: all 0.2s ease-in-out;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-200 min-h-screen text-slate-800 flex justify-center">
+
+    <div class="app-container w-full relative pb-20">
+
+        <!-- Hidden Input for Data Restore -->
+        <input type="file" id="restore-file-input" accept=".json,application/json" onchange="handleRestoreFile(event)" class="hidden">
+
+        <header id="main-header" class="bg-white sticky top-0 z-30 px-4 py-3 border-b border-slate-100 flex items-center justify-between shadow-sm">
+            <button onclick="showHomeView()" class="flex items-center space-x-2.5 text-left focus:outline-none touch-active" title="หน้าแรก">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-orange-500 flex items-center justify-center text-white shadow-md">
+                    <i class="fa-solid fa-clock text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-none">บันทึกเวลา OT</h1>
+                    <p class="text-[11px] text-slate-400 font-medium mt-1">ระบบลงเวลาเข้า-เลิกงาน OT</p>
+                </div>
+            </button>
+
+            <!-- Top Header Buttons -->
+            <div class="flex items-center space-x-2">
+                <button onclick="showEmployeesView()" class="touch-active px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-colors border border-slate-200" title="รายชื่อพนักงาน">
+                    <i class="fa-solid fa-users text-blue-600"></i>
+                    <span class="hidden sm:inline">รายชื่อ</span>
+                </button>
+                <button onclick="toggleDataMenu()" class="touch-active w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl flex items-center justify-center text-sm font-bold border border-slate-200" title="จัดการข้อมูล">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dropdown Data Menu -->
+        <div id="data-menu-dropdown" class="hidden absolute top-14 right-4 z-40 bg-white rounded-2xl shadow-xl border border-slate-100 w-56 p-2 space-y-1">
+            <div class="px-3 py-2 border-b border-slate-100">
+                <p class="text-xs font-bold text-slate-500">⚙️ จัดการข้อมูลระบบ</p>
+            </div>
+            <button onclick="openExportModal()" class="w-full text-left px-3 py-2.5 hover:bg-blue-50 text-blue-700 rounded-xl text-xs font-bold flex items-center space-x-2">
+                <i class="fa-solid fa-file-export text-blue-600"></i>
+                <span>ส่งออกข้อมูล OT</span>
+            </button>
+            <button onclick="backupData()" class="w-full text-left px-3 py-2.5 hover:bg-blue-50 text-slate-700 rounded-xl text-xs font-bold flex items-center space-x-2">
+                <i class="fa-solid fa-database text-blue-600"></i>
+                <span>สำรองข้อมูล</span>
+            </button>
+            <button onclick="triggerRestoreFileInput()" class="w-full text-left px-3 py-2.5 hover:bg-emerald-50 text-slate-700 rounded-xl text-xs font-bold flex items-center space-x-2">
+                <i class="fa-solid fa-file-import text-emerald-600"></i>
+                <span>กู้คืนข้อมูล</span>
+            </button>
+            <div class="border-t border-slate-100 my-1"></div>
+            <button onclick="confirmClearOTRecords()" class="w-full text-left px-3 py-2.5 hover:bg-red-50 text-red-600 rounded-xl text-xs font-bold flex items-center space-x-2">
+                <i class="fa-solid fa-trash-arrow-up"></i>
+                <span>ล้างรายการ OT ทั้งหมด</span>
+            </button>
+            <button onclick="confirmClearEmployees()" class="w-full text-left px-3 py-2.5 hover:bg-red-50 text-red-600 rounded-xl text-xs font-bold flex items-center space-x-2">
+                <i class="fa-solid fa-user-slash"></i>
+                <span>ล้างรายชื่อพนักงาน</span>
+            </button>
+            <button onclick="confirmClearAllData()" class="w-full text-left px-3 py-2.5 hover:bg-red-600 hover:text-white text-red-700 font-bold rounded-xl text-xs flex items-center space-x-2 bg-red-50">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>ล้างข้อมูลทั้งหมด</span>
+            </button>
+        </div>
+
+        <main class="flex-grow p-4 space-y-5 overflow-y-auto">
+
+            <!-- HOME VIEW -->
+            <div id="view-home" class="page-view space-y-5">
+                
+                <!-- Action Cards Grid -->
+                <div class="space-y-3.5">
+                    
+                    <!-- Card 1: OT Morning -->
+                    <div class="bg-white rounded-3xl p-5 border-2 border-blue-100 shadow-sm relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full opacity-60 pointer-events-none"></div>
+                        <div class="flex items-center justify-between mb-3 relative z-10">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl shadow-md shadow-blue-200">
+                                    ☀️
+                                </div>
+                                <div>
+                                    <h2 class="text-lg font-bold text-blue-900 leading-tight">OT เช้า</h2>
+                                    <p class="text-xs text-slate-500">บันทึกเวลามาเริ่มงานก่อนเวลาปกติ</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="openForm('morning')" class="touch-active w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 text-base flex items-center justify-center space-x-2 transition-all">
+                            <i class="fa-solid fa-circle-plus text-lg"></i>
+                            <span>+ เพิ่มข้อมูล</span>
+                        </button>
+                    </div>
+
+                    <!-- Card 2: OT Evening -->
+                    <div class="bg-white rounded-3xl p-5 border-2 border-orange-100 shadow-sm relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-orange-50 rounded-full opacity-60 pointer-events-none"></div>
+                        <div class="flex items-center justify-between mb-3 relative z-10">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center text-2xl shadow-md shadow-orange-200">
+                                    🌙
+                                </div>
+                                <div>
+                                    <h2 class="text-lg font-bold text-orange-950 leading-tight">OT เย็น</h2>
+                                    <p class="text-xs text-slate-500">บันทึกเวลาเลิกงานประจำวัน</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="openForm('evening')" class="touch-active w-full py-3.5 px-4 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold rounded-2xl shadow-lg shadow-orange-200 text-base flex items-center justify-center space-x-2 transition-all">
+                            <i class="fa-solid fa-circle-plus text-lg"></i>
+                            <span>+ เพิ่มข้อมูล</span>
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- Recent Records & Search Section -->
+                <div class="space-y-3 pt-1">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-bold text-slate-800 flex items-center space-x-2">
+                            <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+                            <span>รายการล่าสุด</span>
+                        </h3>
+                        <span id="record-count-badge" class="text-xs font-semibold px-2.5 py-1 bg-slate-200 text-slate-600 rounded-full">0 รายการ</span>
+                    </div>
+
+                    <!-- Search Bar & Filters -->
+                    <div class="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm space-y-2.5">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" id="search-input" oninput="handleSearchInput()" placeholder="ค้นหาชื่อพนักงาน, วันที่, หรือหมายเหตุ..." class="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500">
+                            <button onclick="clearSearchInput()" id="btn-clear-search" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </button>
+                        </div>
+
+                        <!-- Filter Type Tabs -->
+                        <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-center">
+                            <button onclick="setFilterCategory('all')" id="tab-cat-all" class="py-1.5 rounded-lg bg-white shadow-xs text-blue-600">ทั้งหมด</button>
+                            <button onclick="setFilterCategory('morning')" id="tab-cat-morning" class="py-1.5 rounded-lg text-slate-500">☀️ เช้า</button>
+                            <button onclick="setFilterCategory('evening')" id="tab-cat-evening" class="py-1.5 rounded-lg text-slate-500">🌙 เย็น</button>
+                        </div>
+
+                        <!-- Date Quick Filter Buttons -->
+                        <div class="flex items-center space-x-1.5 text-xs font-semibold overflow-x-auto pb-1">
+                            <span class="text-slate-400 text-[11px] shrink-0">วันที่:</span>
+                            <button onclick="setDateFilter('all')" id="btn-date-all" class="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 font-bold shrink-0">ทั้งหมด</button>
+                            <button onclick="setDateFilter('today')" id="btn-date-today" class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0">วันนี้</button>
+                            <button onclick="setDateFilter('yesterday')" id="btn-date-yesterday" class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0">เมื่อวาน</button>
+                            <button onclick="toggleCustomDatePicker()" id="btn-date-custom" class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0">เลือกวันที่</button>
+                        </div>
+
+                        <!-- Custom Date Picker Dropdown -->
+                        <div id="custom-date-picker" class="hidden pt-1 border-t border-slate-100 flex items-center space-x-2">
+                            <input type="date" id="filter-date-start" onchange="renderRecentList()" class="flex-1 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium">
+                            <span class="text-xs text-slate-400">ถึง</span>
+                            <input type="date" id="filter-date-end" onchange="renderRecentList()" class="flex-1 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium">
+                        </div>
+                    </div>
+
+                    <!-- Dynamic List Container -->
+                    <div id="recent-list-container" class="space-y-3">
+                        <!-- Injected recent list items -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- FORM VIEW -->
+            <div id="view-form" class="page-view hidden space-y-4">
+                
+                <!-- Form Header -->
+                <div class="flex items-center justify-between bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm">
+                    <button type="button" onclick="handleFormCancel()" class="touch-active px-3 py-2 text-slate-600 hover:text-slate-900 bg-slate-100 rounded-xl text-sm font-semibold flex items-center space-x-1">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>ยกเลิก</span>
+                    </button>
+                    <h2 id="form-title" class="text-base font-bold text-slate-800">เพิ่มข้อมูล OT</h2>
+                    <div class="w-16"></div>
+                </div>
+
+                <!-- Form Card -->
+                <form onsubmit="handleFormSubmit(event)" class="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4">
+                    
+                    <!-- Date Input -->
+                    <div class="space-y-1">
+                        <label class="block text-sm font-bold text-slate-700">
+                            <i class="fa-solid fa-calendar-day mr-1 text-slate-400"></i> วันที่
+                        </label>
+                        <input type="date" id="form-date" required class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 text-base font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all">
+                    </div>
+
+                    <!-- Time Input -->
+                    <div class="space-y-1">
+                        <label id="form-time-label" class="block text-sm font-bold text-slate-700">
+                            <i class="fa-solid fa-clock mr-1 text-slate-400"></i> เวลาเข้างาน
+                        </label>
+                        <input type="time" id="form-time" required class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 text-base font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all">
+                    </div>
+
+                    <!-- Note Input Field -->
+                    <div class="space-y-1">
+                        <label class="block text-sm font-bold text-slate-700">
+                            <i class="fa-solid fa-note-sticky mr-1 text-slate-400"></i> หมายเหตุ <span class="text-xs font-normal text-slate-400">(ไม่บังคับ)</span>
+                        </label>
+                        <input type="text" id="form-note" placeholder="เช่น มาทำงานแทน, งานเร่งด่วน, ล่วงเวลาเพิ่มเติม..." class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all">
+                    </div>
+
+                    <!-- Employee Selection Box -->
+                    <div class="space-y-2.5 pt-1">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-sm font-bold text-slate-700">
+                                <i class="fa-solid fa-users mr-1 text-slate-400"></i> เลือกพนักงาน (<span id="form-selected-count">0</span> คน)
+                            </label>
+                            <button type="button" onclick="toggleSelectAllEmployees()" id="btn-toggle-select-all" class="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-xl transition-colors">
+                                <i class="fa-solid fa-check-double mr-1"></i>เลือกทั้งหมด
+                            </button>
+                        </div>
+
+                        <!-- Employee Quick Add Input Field -->
+                        <div class="flex space-x-2 w-full">
+                            <input type="text" id="quick-employee-input" placeholder="พิมพ์ชื่อเพิ่มรายชื่อใหม่..." onkeypress="handleKeyPressQuickAddEmployee(event)" class="min-w-0 flex-1 px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all">
+                            <button type="button" onclick="quickAddMasterEmployee()" class="touch-active px-3.5 py-2.5 bg-slate-800 hover:bg-slate-900 active:bg-black text-white font-bold rounded-2xl text-xs shadow-sm shrink-0 flex items-center space-x-1">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>เพิ่มชื่อ</span>
+                            </button>
+                        </div>
+
+                        <!-- Search Filter inside Form -->
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" id="form-emp-search" oninput="renderEmployeeCheckboxes()" placeholder="ค้นหารายชื่อในลิสต์..." class="w-full pl-8 pr-3 py-1.5 bg-slate-100 rounded-xl text-xs outline-none">
+                        </div>
+
+                        <!-- Employee Checkbox List Box -->
+                        <div id="employee-checkbox-container" class="max-h-56 overflow-y-auto p-2.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                            <!-- Checkboxes injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="pt-2 flex space-x-2">
+                        <button type="button" onclick="handleFormCancel()" class="w-1/3 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-base transition-all">
+                            ยกเลิก
+                        </button>
+                        <button type="submit" id="form-submit-btn" class="touch-active w-2/3 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 text-base flex items-center justify-center space-x-2 transition-all">
+                            <i class="fa-solid fa-floppy-disk text-lg"></i>
+                            <span id="form-submit-text">บันทึกข้อมูล</span>
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- FILTERED VIEW -->
+            <div id="view-filtered" class="page-view hidden space-y-4">
+                <div id="filtered-header-card" class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div id="filtered-icon-bg" class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl shadow-md">
+                            ☀️
+                        </div>
+                        <div>
+                            <h2 id="filtered-title" class="text-lg font-bold text-slate-900 leading-tight">ประวัติ OT เช้า</h2>
+                            <p id="filtered-subtitle" class="text-xs text-slate-500">รายการลงเวลามาเริ่มงานก่อนเวลา</p>
+                        </div>
+                    </div>
+                    <button onclick="openForm(currentFilterType)" id="filtered-add-btn" class="touch-active px-3.5 py-2.5 bg-blue-600 text-white font-bold rounded-xl text-sm flex items-center space-x-1">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>เพิ่ม</span>
+                    </button>
+                </div>
+
+                <div id="filtered-list-container" class="space-y-4">
+                    <!-- Dynamic filtered cards grouped by date injected here -->
+                </div>
+            </div>
+
+            <!-- EMPLOYEES MANAGER VIEW -->
+            <div id="view-employees" class="page-view hidden space-y-4">
+                <!-- Page Header -->
+                <div class="flex items-center justify-between bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm">
+                    <button onclick="showHomeView()" class="touch-active px-3 py-2 text-slate-600 hover:text-slate-900 bg-slate-100 rounded-xl text-sm font-semibold flex items-center space-x-1">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>หน้าแรก</span>
+                    </button>
+                    <h2 class="text-base font-bold text-slate-800">จัดการรายชื่อพนักงาน</h2>
+                    <div class="w-12"></div>
+                </div>
+
+                <!-- Add Employee Card -->
+                <div class="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm space-y-3">
+                    <label class="block text-sm font-bold text-slate-800">
+                        <i class="fa-solid fa-user-plus text-blue-600 mr-1"></i> เพิ่มพนักงานใหม่
+                    </label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="manage-emp-input" placeholder="ระบุชื่อพนักงาน..." onkeypress="handleKeyPressAddMasterEmp(event)" class="min-w-0 flex-1 px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 text-base font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all">
+                        <button type="button" onclick="addMasterEmployeeFromManager()" class="touch-active px-4 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-2xl text-base shadow-md shadow-blue-200 shrink-0 flex items-center space-x-1">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>บันทึก</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Master Employee List Card -->
+                <div class="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <h3 class="text-sm font-bold text-slate-800 flex items-center space-x-1.5">
+                            <i class="fa-solid fa-address-book text-slate-400"></i>
+                            <span>รายชื่อพนักงานทั้งหมด</span>
+                        </h3>
+                        <span id="master-emp-count" class="text-xs font-bold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full">0 คน</span>
+                    </div>
+
+                    <!-- Search Input for Roster -->
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="master-emp-search" oninput="renderMasterEmployeeList()" placeholder="ค้นหารายชื่อพนักงาน..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none">
+                    </div>
+
+                    <div id="master-emp-list-container" class="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                        <!-- Dynamic master employees list injected here -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-slate-200 py-2.5 px-10 flex justify-around items-center z-30 shadow-lg">
+            <button onclick="showFilteredView('morning')" id="nav-btn-morning" class="flex flex-col items-center space-y-1 text-slate-400 hover:text-blue-600 transition-colors">
+                <i class="fa-solid fa-sun text-xl"></i>
+                <span class="text-[11px] font-bold">☀️ OT เช้า</span>
+            </button>
+
+            <button onclick="showFilteredView('evening')" id="nav-btn-evening" class="flex flex-col items-center space-y-1 text-slate-400 hover:text-orange-500 transition-colors">
+                <i class="fa-solid fa-moon text-xl"></i>
+                <span class="text-[11px] font-bold">🌙 OT เย็น</span>
+            </button>
+        </nav>
+
+        <!-- MODAL DIALOG: RECORD DETAIL VIEW -->
+        <div id="modal-record-detail" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+            <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 transform scale-95 transition-transform duration-200" id="modal-detail-box">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center space-x-2">
+                        <span id="detail-type-badge" class="px-3 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-600">☀️ OT เช้า</span>
+                        <span id="detail-date-time" class="text-xs font-bold text-slate-600">30 ก.ย. 2569 • 05:30</span>
+                    </div>
+                    <button onclick="closeRecordDetailModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs font-bold text-slate-500">รายชื่อพนักงานที่ลงเวลา:</p>
+                        <span id="detail-emp-count" class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">0 คน</span>
+                    </div>
+                    <div id="detail-emp-list" class="max-h-40 overflow-y-auto space-y-1.5 p-2 bg-slate-50 rounded-2xl border border-slate-100">
+                        <!-- Names injected here -->
+                    </div>
+
+                    <!-- Note Detail Container -->
+                    <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs">
+                        <span class="font-bold text-slate-500 block mb-0.5"><i class="fa-solid fa-note-sticky text-slate-400 mr-1"></i> หมายเหตุ:</span>
+                        <p id="detail-note-text" class="text-slate-800 font-medium leading-relaxed font-sans break-words">-</p>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2 pt-1">
+                    <button id="btn-detail-delete" class="w-1/2 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-sm flex items-center justify-center space-x-1.5 transition-colors">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>ลบรายการ</span>
+                    </button>
+                    <button id="btn-detail-edit" class="w-1/2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow-md shadow-blue-200 flex items-center justify-center space-x-1.5 transition-colors">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        <span>แก้ไขรายการ</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL DIALOG: EXPORT DATA -->
+        <div id="modal-export" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+            <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 transform scale-95 transition-transform duration-200" id="modal-export-box">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+                        <i class="fa-solid fa-file-export text-blue-600"></i>
+                        <span>ส่งออกข้อมูล OT</span>
+                    </h3>
+                    <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-600">วันที่เริ่มต้น</label>
+                        <input type="date" id="export-date-start" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-600">วันที่สิ้นสุด</label>
+                        <input type="date" id="export-date-end" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="space-y-2 pt-2">
+                    <button onclick="exportOTData('morning')" class="touch-active w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl text-sm flex items-center justify-center space-x-2 shadow-md shadow-blue-200 transition-all">
+                        <i class="fa-solid fa-sun text-yellow-300"></i>
+                        <span>☀️ ส่งออก OT เช้า (CSV)</span>
+                    </button>
+                    <button onclick="exportOTData('evening')" class="touch-active w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl text-sm flex items-center justify-center space-x-2 shadow-md shadow-orange-200 transition-all">
+                        <i class="fa-solid fa-moon text-amber-200"></i>
+                        <span>🌙 ส่งออก OT เย็น (CSV)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL DIALOG: EDIT EMPLOYEE NAME -->
+        <div id="modal-edit-employee" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+            <div class="bg-white w-full max-w-xs rounded-3xl p-5 shadow-2xl space-y-4 transform scale-95 transition-transform duration-200" id="modal-edit-box">
+                <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-pen-to-square text-blue-600"></i>
+                    <span>แก้ไขชื่อพนักงาน</span>
+                </h3>
+                <input type="text" id="modal-emp-name-input" class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 text-base font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none">
+                <div class="flex space-x-2 pt-1">
+                    <button type="button" onclick="closeEditEmployeeModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm">ยกเลิก</button>
+                    <button type="button" onclick="saveEditedEmployeeName()" class="w-1/2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow-md shadow-blue-200">บันทึก</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL DIALOG: CONFIRM ACTION (DELETE / CLEAR / RESTORE) -->
+        <div id="modal-confirm" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+            <div class="bg-white w-full max-w-xs rounded-3xl p-5 shadow-2xl space-y-4 text-center transform scale-95 transition-transform duration-200" id="modal-confirm-box">
+                <div id="modal-confirm-icon" class="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-2xl mx-auto">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <h3 id="modal-confirm-title" class="text-base font-bold text-slate-900">ยืนยันการลบข้อมูล</h3>
+                    <p id="modal-confirm-msg" class="text-xs text-slate-500 mt-1">ข้อมูลที่ลบไม่สามารถกู้คืนได้</p>
+                </div>
+                <div class="flex space-x-2 pt-1">
+                    <button type="button" onclick="closeConfirmModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm">ยกเลิก</button>
+                    <button type="button" id="btn-modal-confirm-action" class="w-1/2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm shadow-md shadow-red-200">ลบข้อมูล</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOAST NOTIFICATION -->
+        <div id="toast-msg" class="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl z-50 transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-4 flex items-center space-x-2 max-w-[90vw] text-center">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg shrink-0"></i>
+            <span id="toast-text">บันทึกข้อมูลเรียบร้อยแล้ว</span>
+        </div>
+
+    </div>
+
+    <script>
+        // Global State & Storage Keys
+        let storageRecoveryNotice = false;
+
+        function safeParseStorage(key, fallback = []) {
+            try {
+                const raw = localStorage.getItem(key);
+
+                if (!raw) {
+                    return fallback;
+                }
+
+                const parsed = JSON.parse(raw);
+
+                // ข้อมูลต้องเป็น Array ตามโครงสร้างของแอป
+                if (!Array.isArray(parsed)) {
+                    console.error(`Invalid data type in localStorage key: ${key}`);
+                    storageRecoveryNotice = true;
+
+                    // เก็บข้อมูลเดิมไว้สำรองก่อนใช้ fallback
+                    try {
+                        localStorage.setItem(`${key}_corrupted_backup`, raw);
+                    } catch (backupErr) {
+                        console.error('Failed to preserve invalid storage data:', backupErr);
+                    }
+
+                    return fallback;
+                }
+
+                return parsed;
+
+            } catch (err) {
+                console.error(`Failed to parse localStorage key: ${key}`, err);
+                storageRecoveryNotice = true;
+
+                // เก็บข้อมูลที่เสียหายไว้สำรอง
+                try {
+                    const raw = localStorage.getItem(key);
+
+                    if (raw) {
+                        localStorage.setItem(`${key}_corrupted_backup`, raw);
+                    }
+                } catch (backupErr) {
+                    console.error('Failed to preserve corrupted storage data:', backupErr);
+                }
+
+                return fallback;
+            }
+        }
+
+        let records = safeParseStorage('ot_logs_simple', []);
+        let masterEmployees = safeParseStorage('ot_employees_master', []);
+
+        if (!Array.isArray(records)) {
+            records = [];
+        }
+
+        if (!Array.isArray(masterEmployees)) {
+            masterEmployees = [];
+        }
+
+        // HTML Escaping Utility Function to prevent XSS / broken strings
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Data Migration / Preservation Safety Check
+        let needSaveMigration = false;
+        if (Array.isArray(records)) {
+            records.forEach(r => {
+                if (r.note === undefined || r.note === null) {
+                    r.note = "";
+                    needSaveMigration = true;
+                }
+                if (!Array.isArray(r.names)) {
+                    r.names = [];
+                    needSaveMigration = true;
+                }
+            });
+        } else {
+            records = [];
+            needSaveMigration = true;
+        }
+
+        if (!Array.isArray(masterEmployees)) {
+            masterEmployees = [];
+            needSaveMigration = true;
+        }
+
+        if (masterEmployees.length === 0 && records.length > 0) {
+            const extractedNames = new Set();
+            records.forEach(r => {
+                if (Array.isArray(r.names)) {
+                    r.names.forEach(n => {
+                        if (n && typeof n === 'string' && n.trim()) {
+                            extractedNames.add(n.trim());
+                        }
+                    });
+                }
+            });
+            masterEmployees = Array.from(extractedNames);
+            saveMasterEmployees();
+        }
+
+        if (needSaveMigration) {
+            saveToStorage();
+        }
+
+        let currentFormType = 'morning'; // 'morning' or 'evening'
+        let currentTempNames = []; // Selected employee names for current active form
+        let currentFilterType = 'morning';
+        let previousView = 'home'; // 'home' or 'filtered' or 'employees'
+        let previousFilterType = 'morning';
+        let editingRecordId = null; // Track record ID being edited (null = Add New)
+        let editingEmpIndex = null; // Index of employee being edited in master list
+        let activeFilterCategory = 'all'; // 'all', 'morning', 'evening'
+        let activeDateFilter = 'all'; // 'all', 'today', 'yesterday', 'custom'
+        let isSubmitting = false; // Double-submit guard flag
+
+        // Currently filtered employee list in form for index-based selection
+        let currentFilteredFormEmployees = [];
+
+        window.onload = function() {
+            renderRecentList();
+            if (storageRecoveryNotice) {
+                showToast('พบข้อมูลในเครื่องผิดปกติ ระบบใช้ข้อมูลสำรองว่างเพื่อความปลอดภัย');
+            }
+
+            // Safe Service Worker Registration for PWA Support
+            registerServiceWorker();
+        };
+
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+                try {
+                    navigator.serviceWorker.register('./sw.js')
+                        .then(reg => {
+                            console.log('PWA ServiceWorker registered successfully:', reg.scope);
+                        })
+                        .catch(err => {
+                            console.warn('PWA ServiceWorker registration skipped or failed:', err);
+                        });
+                } catch (e) {
+                    console.warn('ServiceWorker error:', e);
+                }
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('ot_logs_simple', JSON.stringify(records));
+        }
+
+        function saveMasterEmployees() {
+            localStorage.setItem('ot_employees_master', JSON.stringify(masterEmployees));
+        }
+
+        // Local Date Helpers (Prevent UTC offset issues in Thailand)
+        function getLocalDateString() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getLocalFirstDayOfMonthString() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            return `${year}-${month}-01`;
+        }
+
+        // Format Date to Thai Buddhist Era (e.g., 30 ก.ย. 2569)
+        function formatThaiDate(dateStr) {
+            if (!dateStr) return '';
+            const monthsThai = [
+                'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+            ];
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+
+            const year = parseInt(parts[0]) + 543;
+            const month = monthsThai[parseInt(parts[1]) - 1];
+            const day = parseInt(parts[2]);
+
+            return `${day} ${month} ${year}`;
+        }
+
+        function hideAllViews() {
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-form').classList.add('hidden');
+            document.getElementById('view-filtered').classList.add('hidden');
+            document.getElementById('view-employees').classList.add('hidden');
+            document.getElementById('data-menu-dropdown').classList.add('hidden');
+
+            // Reset Bottom Nav Buttons active state
+            document.getElementById('nav-btn-morning').className = 'flex flex-col items-center space-y-1 text-slate-400 hover:text-blue-600 transition-colors';
+            document.getElementById('nav-btn-evening').className = 'flex flex-col items-center space-y-1 text-slate-400 hover:text-orange-500 transition-colors';
+        }
+
+        function showHomeView() {
+            editingRecordId = null;
+            hideAllViews();
+            previousView = 'home';
+            document.getElementById('view-home').classList.remove('hidden');
+            renderRecentList();
+        }
+
+        function showFilteredView(type) {
+            editingRecordId = null;
+            hideAllViews();
+            currentFilterType = type;
+            previousView = 'filtered';
+            previousFilterType = type;
+            document.getElementById('view-filtered').classList.remove('hidden');
+
+            const isMorning = type === 'morning';
+            const iconBg = document.getElementById('filtered-icon-bg');
+            const title = document.getElementById('filtered-title');
+            const subtitle = document.getElementById('filtered-subtitle');
+            const addBtn = document.getElementById('filtered-add-btn');
+
+            if (isMorning) {
+                document.getElementById('nav-btn-morning').className = 'flex flex-col items-center space-y-1 text-blue-600 font-bold';
+                iconBg.className = 'w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl shadow-md shadow-blue-200';
+                iconBg.innerHTML = '☀️';
+                title.textContent = 'ประวัติ OT เช้า';
+                subtitle.textContent = 'รายการลงเวลามาเริ่มงานก่อนเวลา';
+                addBtn.className = 'touch-active px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm flex items-center space-x-1';
+            } else {
+                document.getElementById('nav-btn-evening').className = 'flex flex-col items-center space-y-1 text-orange-500 font-bold';
+                iconBg.className = 'w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center text-2xl shadow-md shadow-orange-200';
+                iconBg.innerHTML = '🌙';
+                title.textContent = 'ประวัติ OT เย็น';
+                subtitle.textContent = 'รายการลงเวลาเลิกงานประจำวัน';
+                addBtn.className = 'touch-active px-3.5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-sm flex items-center space-x-1';
+            }
+
+            renderFilteredList(type);
+        }
+
+        function showEmployeesView() {
+            editingRecordId = null;
+            hideAllViews();
+            previousView = 'employees';
+            document.getElementById('view-employees').classList.remove('hidden');
+            renderMasterEmployeeList();
+        }
+
+        function toggleDataMenu() {
+            const dropdown = document.getElementById('data-menu-dropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        function handleFormCancel() {
+            if (previousView === 'filtered') {
+                showFilteredView(previousFilterType);
+            } else if (previousView === 'employees') {
+                showEmployeesView();
+            } else {
+                showHomeView();
+            }
+        }
+
+        function openForm(type) {
+            if (!document.getElementById('view-filtered').classList.contains('hidden')) {
+                previousView = 'filtered';
+                previousFilterType = type;
+            } else if (!document.getElementById('view-home').classList.contains('hidden')) {
+                previousView = 'home';
+            }
+
+            hideAllViews();
+            currentFormType = type;
+            editingRecordId = null;
+            document.getElementById('view-form').classList.remove('hidden');
+
+            const formTitle = document.getElementById('form-title');
+            const formTimeLabel = document.getElementById('form-time-label');
+            const formSubmitBtn = document.getElementById('form-submit-btn');
+            const formSubmitText = document.getElementById('form-submit-text');
+
+            document.getElementById('form-date').value = getLocalDateString();
+            document.getElementById('form-note').value = '';
+
+            currentTempNames = [];
+
+            if (type === 'morning') {
+                formTitle.textContent = 'เพิ่มข้อมูล OT เช้า';
+                formTimeLabel.innerHTML = '<i class="fa-solid fa-clock mr-1 text-blue-500"></i> เวลาเข้างาน';
+                document.getElementById('form-time').value = '05:30';
+                formSubmitBtn.className = 'touch-active w-2/3 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 text-base flex items-center justify-center space-x-2 transition-all';
+            } else {
+                formTitle.textContent = 'เพิ่มข้อมูล OT เย็น';
+                formTimeLabel.innerHTML = '<i class="fa-solid fa-clock mr-1 text-orange-500"></i> เวลาเลิกงาน';
+                document.getElementById('form-time').value = '20:00';
+                formSubmitBtn.className = 'touch-active w-2/3 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-200 text-base flex items-center justify-center space-x-2 transition-all';
+            }
+
+            formSubmitText.textContent = 'บันทึกข้อมูล';
+            document.getElementById('quick-employee-input').value = '';
+            document.getElementById('form-emp-search').value = '';
+            renderEmployeeCheckboxes();
+        }
+
+        function openEditForm(id) {
+            closeRecordDetailModal();
+            const targetRecord = records.find(r => r.id === id);
+            if (!targetRecord) return;
+
+            if (!document.getElementById('view-filtered').classList.contains('hidden')) {
+                previousView = 'filtered';
+                previousFilterType = targetRecord.type;
+            } else if (!document.getElementById('view-home').classList.contains('hidden')) {
+                previousView = 'home';
+            }
+
+            hideAllViews();
+            editingRecordId = id;
+            currentFormType = targetRecord.type;
+            document.getElementById('view-form').classList.remove('hidden');
+
+            const formTitle = document.getElementById('form-title');
+            const formTimeLabel = document.getElementById('form-time-label');
+            const formSubmitBtn = document.getElementById('form-submit-btn');
+            const formSubmitText = document.getElementById('form-submit-text');
+
+            document.getElementById('form-date').value = targetRecord.date;
+            document.getElementById('form-time').value = targetRecord.time;
+            document.getElementById('form-note').value = targetRecord.note || '';
+
+            currentTempNames = Array.isArray(targetRecord.names) ? [...targetRecord.names] : [];
+
+            const isMorning = targetRecord.type === 'morning';
+            if (isMorning) {
+                formTitle.textContent = 'แก้ไขข้อมูล OT เช้า';
+                formTimeLabel.innerHTML = '<i class="fa-solid fa-clock mr-1 text-blue-500"></i> เวลาเข้างาน';
+                formSubmitBtn.className = 'touch-active w-2/3 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 text-base flex items-center justify-center space-x-2 transition-all';
+            } else {
+                formTitle.textContent = 'แก้ไขข้อมูล OT เย็น';
+                formTimeLabel.innerHTML = '<i class="fa-solid fa-clock mr-1 text-orange-500"></i> เวลาเลิกงาน';
+                formSubmitBtn.className = 'touch-active w-2/3 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-200 text-base flex items-center justify-center space-x-2 transition-all';
+            }
+
+            formSubmitText.textContent = 'บันทึกการแก้ไข';
+            document.getElementById('quick-employee-input').value = '';
+            document.getElementById('form-emp-search').value = '';
+            renderEmployeeCheckboxes();
+        }
+
+        function renderEmployeeCheckboxes() {
+            const container = document.getElementById('employee-checkbox-container');
+            document.getElementById('form-selected-count').textContent = currentTempNames.length;
+
+            const searchQuery = (document.getElementById('form-emp-search')?.value || '').toLowerCase().trim();
+            currentFilteredFormEmployees = masterEmployees.filter(e => e.toLowerCase().includes(searchQuery));
+
+            if (masterEmployees.length === 0) {
+                container.innerHTML = `
+                    <div class="py-6 text-center text-slate-400 text-xs font-medium">
+                        ยังไม่มีรายชื่อพนักงานในสมุดรายชื่อ<br>พิมพ์ชื่อด้านบนเพื่อเพิ่มได้เลย
+                    </div>
+                `;
+                return;
+            }
+
+            if (currentFilteredFormEmployees.length === 0) {
+                container.innerHTML = `
+                    <div class="py-6 text-center text-slate-400 text-xs font-medium">
+                        ไม่พบรายชื่อพนักงานที่ค้นหา
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = currentFilteredFormEmployees.map((name, idx) => {
+                const isChecked = currentTempNames.includes(name);
+                const safeName = escapeHTML(name);
+                return `
+                    <label class="flex items-center justify-between p-3 rounded-xl ${isChecked ? 'bg-blue-50 border-blue-200 text-blue-900 font-bold' : 'bg-white border-slate-100 text-slate-700 font-medium'} border shadow-sm cursor-pointer transition-all">
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" onchange="toggleEmployeeSelectionByFilteredIndex(${idx})" ${isChecked ? 'checked' : ''} class="w-5 h-5 text-blue-600 rounded-lg border-slate-300 focus:ring-blue-500 accent-blue-600">
+                            <span class="text-sm">👤 ${safeName}</span>
+                        </div>
+                        ${isChecked ? '<i class="fa-solid fa-circle-check text-blue-600 text-sm"></i>' : ''}
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function toggleEmployeeSelectionByFilteredIndex(idx) {
+            const name = currentFilteredFormEmployees[idx];
+            if (!name) return;
+
+            const index = currentTempNames.indexOf(name);
+            if (index === -1) {
+                currentTempNames.push(name);
+            } else {
+                currentTempNames.splice(index, 1);
+            }
+            renderEmployeeCheckboxes();
+        }
+
+        function toggleSelectAllEmployees() {
+            if (currentFilteredFormEmployees.length === 0) return;
+
+            const allFilteredSelected = currentFilteredFormEmployees.every(emp => currentTempNames.includes(emp));
+
+            if (allFilteredSelected) {
+                currentTempNames = currentTempNames.filter(emp => !currentFilteredFormEmployees.includes(emp));
+            } else {
+                currentFilteredFormEmployees.forEach(emp => {
+                    if (!currentTempNames.includes(emp)) {
+                        currentTempNames.push(emp);
+                    }
+                });
+            }
+            renderEmployeeCheckboxes();
+        }
+
+        function quickAddMasterEmployee() {
+            const input = document.getElementById('quick-employee-input');
+            const name = input.value.trim();
+            if (name) {
+                if (!masterEmployees.includes(name)) {
+                    masterEmployees.push(name);
+                    saveMasterEmployees();
+                    if (!currentTempNames.includes(name)) {
+                        currentTempNames.push(name);
+                    }
+                    input.value = '';
+                    renderEmployeeCheckboxes();
+                    showToast(`เพิ่มรายชื่อ "${escapeHTML(name)}" เรียบร้อยแล้ว`);
+                } else {
+                    if (!currentTempNames.includes(name)) {
+                        currentTempNames.push(name);
+                    }
+                    input.value = '';
+                    renderEmployeeCheckboxes();
+                    showToast('เลือกชื่อพนักงานให้แล้ว เพราะมีอยู่ในสมุดรายชื่อ');
+                }
+            }
+        }
+
+        function handleKeyPressQuickAddEmployee(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                quickAddMasterEmployee();
+            }
+        }
+
+        function renderMasterEmployeeList() {
+            const container = document.getElementById('master-emp-list-container');
+            document.getElementById('master-emp-count').textContent = `${masterEmployees.length} คน`;
+
+            const searchQuery = (document.getElementById('master-emp-search')?.value || '').toLowerCase().trim();
+            const filteredEmployees = masterEmployees.filter(e => e.toLowerCase().includes(searchQuery));
+
+            if (masterEmployees.length === 0) {
+                container.innerHTML = `
+                    <div class="py-8 text-center text-slate-400 text-xs font-medium">
+                        ยังไม่มีรายชื่อพนักงาน บันทึกเพิ่มได้จากช่องด้านบน
+                    </div>
+                `;
+                return;
+            }
+
+            if (filteredEmployees.length === 0) {
+                container.innerHTML = `
+                    <div class="py-6 text-center text-slate-400 text-xs font-medium">
+                        ไม่พบรายชื่อที่ค้นหา
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredEmployees.map((name) => {
+                const realIndex = masterEmployees.indexOf(name);
+                const safeName = escapeHTML(name);
+                return `
+                    <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">
+                                ${realIndex + 1}
+                            </div>
+                            <span class="text-sm font-bold text-slate-800">👤 ${safeName}</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <button onclick="openEditEmployeeModal(${realIndex})" class="p-2 text-slate-400 hover:text-blue-600 rounded-xl hover:bg-white text-xs transition-colors" title="แก้ไขชื่อ">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="confirmDeleteMasterEmployee(${realIndex})" class="p-2 text-slate-400 hover:text-red-500 rounded-xl hover:bg-white text-xs transition-colors" title="ลบชื่อ">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addMasterEmployeeFromManager() {
+            const input = document.getElementById('manage-emp-input');
+            const name = input.value.trim();
+            if (name) {
+                if (!masterEmployees.includes(name)) {
+                    masterEmployees.push(name);
+                    saveMasterEmployees();
+                    renderMasterEmployeeList();
+                    input.value = '';
+                    showToast(`เพิ่มรายชื่อ "${escapeHTML(name)}" เรียบร้อยแล้ว`);
+                } else {
+                    showToast('มีรายชื่อนี้ในระบบแล้ว');
+                }
+            } else {
+                showToast('กรุณาระบุชื่อพนักงาน');
+            }
+        }
+
+        function handleKeyPressAddMasterEmp(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addMasterEmployeeFromManager();
+            }
+        }
+
+        function openEditEmployeeModal(index) {
+            editingEmpIndex = index;
+            const modal = document.getElementById('modal-edit-employee');
+            const input = document.getElementById('modal-emp-name-input');
+            input.value = masterEmployees[index] || '';
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('modal-edit-box').classList.remove('scale-95');
+            document.getElementById('modal-edit-box').classList.add('scale-100');
+            input.focus();
+        }
+
+        function closeEditEmployeeModal() {
+            editingEmpIndex = null;
+            const modal = document.getElementById('modal-edit-employee');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('modal-edit-box').classList.remove('scale-100');
+            document.getElementById('modal-edit-box').classList.add('scale-95');
+        }
+
+        function saveEditedEmployeeName() {
+            if (editingEmpIndex === null) return;
+            const newName = document.getElementById('modal-emp-name-input').value.trim();
+            if (newName) {
+                const oldName = masterEmployees[editingEmpIndex];
+                
+                if (masterEmployees.includes(newName) && newName !== oldName) {
+                    showToast('มีรายชื่อนี้อยู่ในระบบแล้ว');
+                    return;
+                }
+
+                masterEmployees[editingEmpIndex] = newName;
+                saveMasterEmployees();
+
+                // Sync name in records
+                records.forEach(r => {
+                    if (Array.isArray(r.names)) {
+                        r.names = r.names.map(n => n === oldName ? newName : n);
+                    }
+                });
+                saveToStorage();
+
+                renderMasterEmployeeList();
+                closeEditEmployeeModal();
+                showToast('แก้ไขชื่อพนักงานเรียบร้อยแล้ว');
+            }
+        }
+
+        function confirmDeleteMasterEmployee(index) {
+            const name = masterEmployees[index];
+            showConfirmModal(
+                'ลบรายชื่อพนักงาน',
+                `คุณต้องการลบคุณ "${escapeHTML(name)}" ออกจากสมุดรายชื่อใช่หรือไม่?`,
+                () => deleteMasterEmployee(index)
+            );
+        }
+
+        function deleteMasterEmployee(index) {
+            const name = masterEmployees[index];
+            masterEmployees.splice(index, 1);
+            saveMasterEmployees();
+            renderMasterEmployeeList();
+            showToast(`ลบรายชื่อ "${escapeHTML(name)}" แล้ว`);
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            if (isSubmitting) return;
+
+            const date = document.getElementById('form-date').value;
+            const time = document.getElementById('form-time').value;
+            const note = (document.getElementById('form-note').value || '').trim();
+
+            if (!date) {
+                showToast('กรุณาระบุวันที่');
+                return;
+            }
+            if (!time) {
+                showToast('กรุณาระบุเวลา');
+                return;
+            }
+            if (currentTempNames.length === 0) {
+                showToast('กรุณาเลือกพนักงานอย่างน้อย 1 คน');
+                return;
+            }
+
+            isSubmitting = true;
+
+            if (editingRecordId) {
+                // EDIT MODE
+                const recIndex = records.findIndex(r => r.id === editingRecordId);
+                if (recIndex !== -1) {
+                    records[recIndex].date = date;
+                    records[recIndex].time = time;
+                    records[recIndex].names = [...currentTempNames];
+                    records[recIndex].note = note;
+                }
+                saveToStorage();
+                showToast('แก้ไขข้อมูลเรียบร้อยแล้ว');
+                
+                editingRecordId = null;
+                handleFormCancel();
+            } else {
+                // ADD MODE
+                const newRecord = {
+                    id: 'REC-' + Date.now().toString(),
+                    type: currentFormType,
+                    date: date,
+                    time: time,
+                    names: [...currentTempNames],
+                    note: note
+                };
+
+                records.unshift(newRecord);
+                saveToStorage();
+
+                showToast('บันทึกข้อมูลเรียบร้อยแล้ว');
+                handleFormCancel();
+            }
+
+            setTimeout(() => { isSubmitting = false; }, 500);
+        }
+
+        function confirmDeleteRecord(id) {
+            closeRecordDetailModal();
+            showConfirmModal(
+                'ต้องการลบรายการนี้หรือไม่?',
+                'รายการบันทึกนี้จะถูกลบออกจากระบบอย่างถาวร',
+                () => deleteRecord(id)
+            );
+        }
+
+        function deleteRecord(id) {
+            records = records.filter(r => r.id !== id);
+            saveToStorage();
+            showToast('ลบรายการเรียบร้อยแล้ว');
+            
+            if (!document.getElementById('view-filtered').classList.contains('hidden')) {
+                renderFilteredList(currentFilterType);
+            } else {
+                renderRecentList();
+            }
+        }
+
+        function handleSearchInput() {
+            const val = document.getElementById('search-input').value;
+            const btnClear = document.getElementById('btn-clear-search');
+            if (val) {
+                btnClear.classList.remove('hidden');
+            } else {
+                btnClear.classList.add('hidden');
+            }
+            renderRecentList();
+        }
+
+        function clearSearchInput() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('btn-clear-search').classList.add('hidden');
+            renderRecentList();
+        }
+
+        function setFilterCategory(cat) {
+            activeFilterCategory = cat;
+            document.getElementById('tab-cat-all').className = cat === 'all' ? 'py-1.5 rounded-lg bg-white shadow-xs text-blue-600' : 'py-1.5 rounded-lg text-slate-500';
+            document.getElementById('tab-cat-morning').className = cat === 'morning' ? 'py-1.5 rounded-lg bg-white shadow-xs text-blue-600' : 'py-1.5 rounded-lg text-slate-500';
+            document.getElementById('tab-cat-evening').className = cat === 'evening' ? 'py-1.5 rounded-lg bg-white shadow-xs text-blue-600' : 'py-1.5 rounded-lg text-slate-500';
+            renderRecentList();
+        }
+
+        function setDateFilter(filter) {
+            activeDateFilter = filter;
+            document.getElementById('custom-date-picker').classList.add('hidden');
+
+            document.getElementById('btn-date-all').className = filter === 'all' ? 'px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 font-bold shrink-0' : 'px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0';
+            document.getElementById('btn-date-today').className = filter === 'today' ? 'px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 font-bold shrink-0' : 'px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0';
+            document.getElementById('btn-date-yesterday').className = filter === 'yesterday' ? 'px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 font-bold shrink-0' : 'px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0';
+            document.getElementById('btn-date-custom').className = filter === 'custom' ? 'px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 font-bold shrink-0' : 'px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0';
+
+            renderRecentList();
+        }
+
+        function toggleCustomDatePicker() {
+            setDateFilter('custom');
+            document.getElementById('custom-date-picker').classList.remove('hidden');
+        }
+
+        function renderRecentList() {
+            const container = document.getElementById('recent-list-container');
+            const searchQuery = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+
+            let filtered = [...records].sort((a, b) => {
+                const dateTimeA = `${a.date}T${a.time}`;
+                const dateTimeB = `${b.date}T${b.time}`;
+                return dateTimeB.localeCompare(dateTimeA);
+            });
+
+            if (activeFilterCategory !== 'all') {
+                filtered = filtered.filter(r => r.type === activeFilterCategory);
+            }
+
+            const todayStr = getLocalDateString();
+            const yesterdayDate = new Date();
+            yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+            const yesterdayYear = yesterdayDate.getFullYear();
+            const yesterdayMonth = String(yesterdayDate.getMonth() + 1).padStart(2, '0');
+            const yesterdayDay = String(yesterdayDate.getDate()).padStart(2, '0');
+            const yesterdayStr = `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}`;
+
+            if (activeDateFilter === 'today') {
+                filtered = filtered.filter(r => r.date === todayStr);
+            } else if (activeDateFilter === 'yesterday') {
+                filtered = filtered.filter(r => r.date === yesterdayStr);
+            } else if (activeDateFilter === 'custom') {
+                const start = document.getElementById('filter-date-start').value;
+                const end = document.getElementById('filter-date-end').value;
+                if (start) filtered = filtered.filter(r => r.date >= start);
+                if (end) filtered = filtered.filter(r => r.date <= end);
+            }
+
+            if (searchQuery) {
+                filtered = filtered.filter(r => {
+                    const thaiDate = formatThaiDate(r.date).toLowerCase();
+                    const namesStr = (Array.isArray(r.names) ? r.names : []).join(' ').toLowerCase();
+                    const noteStr = (r.note || '').toLowerCase();
+                    const typeStr = r.type === 'morning' ? 'เช้า ot เช้า' : 'เย็น ot เย็น';
+                    return r.date.includes(searchQuery) || 
+                           r.time.includes(searchQuery) || 
+                           thaiDate.includes(searchQuery) || 
+                           namesStr.includes(searchQuery) ||
+                           noteStr.includes(searchQuery) ||
+                           typeStr.includes(searchQuery);
+                });
+            }
+
+            document.getElementById('record-count-badge').textContent = `${filtered.length} รายการ`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-100 shadow-sm">
+                        <i class="fa-regular fa-folder-open text-3xl mb-2"></i>
+                        <p class="text-sm font-medium">ไม่พบรายการบันทึก OT</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(r => createRecordCardHTML(r)).join('');
+        }
+
+        function renderFilteredList(type) {
+            const container = document.getElementById('filtered-list-container');
+            const filtered = records
+                .filter(r => r.type === type)
+                .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-100 shadow-sm">
+                        <i class="fa-regular fa-folder-open text-3xl mb-2"></i>
+                        <p class="text-sm font-medium">ยังไม่มีข้อมูลในหมวดนี้</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const groupedByDate = {};
+            filtered.forEach(r => {
+                if (!groupedByDate[r.date]) {
+                    groupedByDate[r.date] = [];
+                }
+                groupedByDate[r.date].push(r);
+            });
+
+            const sortedDates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
+
+            container.innerHTML = sortedDates.map(dateKey => {
+                const dateRecords = groupedByDate[dateKey];
+                const themeColor = type === 'morning' ? 'blue' : 'orange';
+                return `
+                    <div class="space-y-2 pt-1">
+                        <div class="flex items-center space-x-2 px-2">
+                            <div class="w-2.5 h-2.5 rounded-full bg-${themeColor}-500"></div>
+                            <h3 class="text-sm font-bold text-slate-800">${formatThaiDate(dateKey)}</h3>
+                            <span class="text-xs font-semibold text-slate-400">(${dateRecords.length} เวลา)</span>
+                        </div>
+                        <div class="space-y-2.5">
+                            ${dateRecords.map(r => createRecordCardHTML(r)).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function createRecordCardHTML(r) {
+            const isMorning = r.type === 'morning';
+            const themeColor = isMorning ? 'blue' : 'orange';
+            const typeLabel = isMorning ? '☀ OT เช้า' : '🌙 OT เย็น';
+            const empCount = Array.isArray(r.names) ? r.names.length : 0;
+            const namesText = Array.isArray(r.names) ? r.names.map(escapeHTML).join(', ') : '';
+            const noteText = r.note ? escapeHTML(String(r.note).trim()) : '';
+            const safeId = escapeHTML(r.id);
+
+            return `
+                <div onclick="openRecordDetailModal('${safeId}')" class="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative space-y-2">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-bold text-${themeColor}-600 bg-${themeColor}-50 px-2.5 py-1 rounded-xl">
+                                ${typeLabel}
+                            </span>
+                            <span class="text-xs font-semibold text-slate-600">
+                                ${formatThaiDate(r.date)} • ${r.time}
+                            </span>
+                        </div>
+                        <div class="flex items-center space-x-1" onclick="event.stopPropagation()">
+                            <button onclick="openEditForm('${safeId}')" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg text-xs transition-colors" title="แก้ไขรายการ">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="confirmDeleteRecord('${safeId}')" class="text-slate-400 hover:text-red-500 p-1.5 rounded-lg text-xs transition-colors" title="ลบรายการ">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="pt-0.5 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-400">รายชื่อพนักงาน (${empCount} คน):</span>
+                        </div>
+                        <p class="text-sm font-bold text-slate-800 leading-snug line-clamp-2">
+                            ${namesText}
+                        </p>
+                        ${noteText ? `
+                            <p class="text-xs text-slate-500 bg-slate-50 p-1.5 rounded-lg border border-slate-100 mt-1 leading-snug">
+                                <span class="font-bold text-slate-600">หมายเหตุ:</span> ${noteText}
+                            </p>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function openRecordDetailModal(id) {
+            const r = records.find(item => item.id === id);
+            if (!r) return;
+
+            const modal = document.getElementById('modal-record-detail');
+            const isMorning = r.type === 'morning';
+            
+            const typeBadge = document.getElementById('detail-type-badge');
+            typeBadge.className = isMorning ? 'px-3 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-600' : 'px-3 py-1 rounded-xl text-xs font-bold bg-orange-50 text-orange-600';
+            typeBadge.textContent = isMorning ? '☀️ OT เช้า' : '🌙 OT เย็น';
+
+            document.getElementById('detail-date-time').textContent = `${formatThaiDate(r.date)} • ${r.time}`;
+            document.getElementById('detail-emp-count').textContent = `${Array.isArray(r.names) ? r.names.length : 0} คน`;
+            document.getElementById('detail-note-text').textContent = r.note && String(r.note).trim() ? r.note : '-';
+
+            const listContainer = document.getElementById('detail-emp-list');
+            const safeNames = Array.isArray(r.names) ? r.names : [];
+            listContainer.innerHTML = safeNames.map((name, idx) => `
+                <div class="flex items-center space-x-2 py-1 px-2.5 bg-white rounded-xl border border-slate-100 text-xs font-bold text-slate-800">
+                    <span class="text-slate-400 font-normal">${idx + 1}.</span>
+                    <span>👤 ${escapeHTML(name)}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('btn-detail-edit').onclick = () => openEditForm(r.id);
+            document.getElementById('btn-detail-delete').onclick = () => confirmDeleteRecord(r.id);
+
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('modal-detail-box').classList.remove('scale-95');
+            document.getElementById('modal-detail-box').classList.add('scale-100');
+        }
+
+        function closeRecordDetailModal() {
+            const modal = document.getElementById('modal-record-detail');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('modal-detail-box').classList.remove('scale-100');
+            document.getElementById('modal-detail-box').classList.add('scale-95');
+        }
+
+        function openExportModal() {
+            document.getElementById('data-menu-dropdown').classList.add('hidden');
+            const modal = document.getElementById('modal-export');
+            document.getElementById('export-date-start').value = getLocalFirstDayOfMonthString();
+            document.getElementById('export-date-end').value = getLocalDateString();
+
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('modal-export-box').classList.remove('scale-95');
+            document.getElementById('modal-export-box').classList.add('scale-100');
+        }
+
+        function closeExportModal() {
+            const modal = document.getElementById('modal-export');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('modal-export-box').classList.remove('scale-100');
+            document.getElementById('modal-export-box').classList.add('scale-95');
+        }
+
+        function escapeCSV(value) {
+            const str = String(value ?? '');
+            return '"' + str.replace(/"/g, '""') + '"';
+        }
+
+        async function exportOTData(type) {
+            const start = document.getElementById('export-date-start').value;
+            const end = document.getElementById('export-date-end').value;
+
+            if (!start || !end) {
+                showToast('กรุณาระบุช่วงวันที่ต้องการส่งออก');
+                return;
+            }
+
+            if (start > end) {
+                showToast('วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด');
+                return;
+            }
+
+            const typeLabel = type === 'morning' ? 'OT เช้า' : 'OT เย็น';
+
+            // Filter matching records
+            const matchingRecords = records
+                .filter(r => r.type === type && r.date >= start && r.date <= end)
+                .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+
+            if (matchingRecords.length === 0) {
+                showToast(`ไม่พบข้อมูล ${typeLabel} ในช่วงวันที่เลือก`);
+                return;
+            }
+
+            // Calculate unique OT dates for this category
+            const uniqueOTDates = new Set();
+            matchingRecords.forEach(r => {
+                if (r.date) {
+                    uniqueOTDates.add(r.date);
+                }
+            });
+            const totalOTDays = uniqueOTDates.size;
+
+            // Prepare CSV Content (Headers: วันที่,เวลา,รายชื่อพนักงาน,จำนวนคน,หมายเหตุ)
+            let csvRows = [];
+            csvRows.push(['วันที่', 'เวลา', 'รายชื่อพนักงาน', 'จำนวนคน', 'หมายเหตุ'].map(escapeCSV).join(','));
+
+            matchingRecords.forEach(r => {
+                const thaiDateStr = formatThaiDate(r.date);
+                const timeStr = r.time || '';
+                const noteStr = r.note || '';
+                const namesArr = Array.isArray(r.names) ? r.names.filter(n => n && typeof n === 'string' && n.trim()) : [];
+                const namesFormatted = namesArr.join(', ');
+                const countStr = `${namesArr.length} คน`;
+
+                const row = [
+                    escapeCSV(thaiDateStr),
+                    escapeCSV(timeStr),
+                    escapeCSV(namesFormatted),
+                    escapeCSV(countStr),
+                    escapeCSV(noteStr)
+                ];
+                csvRows.push(row.join(','));
+            });
+
+            const csvContent = csvRows.join('\r\n');
+            const BOM = '\uFEFF'; // UTF-8 BOM for Microsoft Excel Thai language support
+            const fileName = `OT_${type === 'morning' ? 'เช้า' : 'เย็น'}_${start}_ถึง_${end}.csv`;
+
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+            let downloadedSuccess = false;
+
+            // 1. Try Web Share API for Mobile Devices (Android & iOS native share menu)
+            if (navigator.canShare && navigator.userAgent.match(/Mobi|Android|iPhone|iPad/i)) {
+                try {
+                    const file = new File([blob], fileName, { type: 'text/csv;charset=utf-8' });
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: fileName,
+                            text: `ส่งออกข้อมูล ${typeLabel}`
+                        });
+                        downloadedSuccess = true;
+                    }
+                } catch (err) {
+                    if (err.name === 'AbortError') {
+                        // User explicitly canceled the share dialog: STOP immediately
+                        closeExportModal();
+                        return;
+                    }
+                    console.warn('Web Share failed, fallback to direct download...', err);
+                }
+            }
+
+            // 2. Standard Anchor Link Download (<a download>)
+            if (!downloadedSuccess) {
+                try {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', fileName);
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    setTimeout(() => URL.revokeObjectURL(url), 2000);
+                    downloadedSuccess = true;
+                } catch (e) {
+                    console.warn('Anchor download failed, trying window.open fallback...', e);
+                }
+            }
+
+            // 3. Fallback: Open Blob URL directly in new tab if iframe blocks direct anchor downloads
+            if (!downloadedSuccess) {
+                try {
+                    const url = URL.createObjectURL(blob);
+                    window.open(url, '_blank');
+                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                    downloadedSuccess = true;
+                } catch (e) {
+                    showToast('ไม่สามารถดาวน์โหลดไฟล์ได้ในสภาพแวดล้อมนี้');
+                    return;
+                }
+            }
+
+            closeExportModal();
+            showToast(`ส่งออก ${typeLabel} เรียบร้อย (มี OT ${totalOTDays} วัน)`);
+        }
+
+        function backupData() {
+            document.getElementById('data-menu-dropdown').classList.add('hidden');
+            try {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const mins = String(now.getMinutes()).padStart(2, '0');
+                const secs = String(now.getSeconds()).padStart(2, '0');
+
+                const fileName = `OT_Backup_${year}-${month}-${day}_${hours}-${mins}-${secs}.json`;
+                const backupPayload = {
+                    app: "บันทึกเวลา OT",
+                    version: 1,
+                    backupDate: `${year}-${month}-${day} ${hours}:${mins}:${secs}`,
+                    records: records,
+                    masterEmployees: masterEmployees
+                };
+
+                const jsonStr = JSON.stringify(backupPayload, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', fileName);
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
+                showToast('สำรองข้อมูลเรียบร้อยแล้ว');
+            } catch (err) {
+                console.error('Backup error:', err);
+                showToast('ไม่สามารถสำรองข้อมูลได้');
+            }
+        }
+
+        function triggerRestoreFileInput() {
+            document.getElementById('data-menu-dropdown').classList.add('hidden');
+            const input = document.getElementById('restore-file-input');
+            if (input) {
+                input.value = '';
+                input.click();
+            }
+        }
+
+        function handleRestoreFile(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    const parsed = JSON.parse(content);
+
+                    // Strict JSON validation check
+                    if (
+                        !parsed ||
+                        typeof parsed !== 'object' ||
+                        !Array.isArray(parsed.records) ||
+                        !Array.isArray(parsed.masterEmployees)
+                    ) {
+                        showToast('ไฟล์สำรองข้อมูลไม่ถูกต้อง');
+                        return;
+                    }
+
+                    // Validate & sanitize each record
+                    const validatedRecords = [];
+                    for (const r of parsed.records) {
+                        if (!r || typeof r !== 'object' || !r.id || !r.type || !r.date || !r.time) {
+                            showToast('ไฟล์สำรองข้อมูลไม่ถูกต้อง');
+                            return;
+                        }
+                        if (r.type !== 'morning' && r.type !== 'evening') {
+                            showToast('ไฟล์สำรองข้อมูลไม่ถูกต้อง');
+                            return;
+                        }
+                        validatedRecords.push({
+                            id: String(r.id),
+                            type: r.type,
+                            date: String(r.date),
+                            time: String(r.time),
+                            names: Array.isArray(r.names) ? r.names.filter(n => typeof n === 'string' && n.trim()) : [],
+                            note: r.note ? String(r.note).trim() : ''
+                        });
+                    }
+
+                    // Validate & sanitize master employees roster
+                    const validatedEmployees = [];
+                    for (const emp of parsed.masterEmployees) {
+                        if (typeof emp === 'string' && emp.trim() && !validatedEmployees.includes(emp.trim())) {
+                            validatedEmployees.push(emp.trim());
+                        }
+                    }
+
+                    // Request user confirmation before overwriting
+                    showConfirmModal(
+                        'ยืนยันการกู้คืนข้อมูล?',
+                        'ข้อมูลปัจจุบันจะถูกแทนที่ด้วยข้อมูลจากไฟล์สำรอง และไม่สามารถยกเลิกได้',
+                        () => performRestore(validatedRecords, validatedEmployees)
+                    );
+
+                } catch (err) {
+                    console.error('Restore file parsing error:', err);
+                    showToast('ไฟล์สำรองข้อมูลไม่ถูกต้อง');
+                }
+            };
+
+            reader.onerror = function() {
+                showToast('ไม่สามารถอ่านไฟล์ได้');
+            };
+
+            reader.readAsText(file);
+        }
+
+        function performRestore(newRecords, newEmployees) {
+            // Backup in-memory copies for rollback safety
+            const previousRecords = [...records];
+            const previousMasterEmployees = [...masterEmployees];
+
+            try {
+                records = newRecords;
+                masterEmployees = newEmployees;
+
+                saveToStorage();
+                saveMasterEmployees();
+
+                // Refresh active UI views
+                renderRecentList();
+                renderMasterEmployeeList();
+                renderEmployeeCheckboxes();
+
+                showToast('กู้คืนข้อมูลเรียบร้อยแล้ว');
+            } catch (err) {
+                console.error('Failed to perform restore:', err);
+                // Rollback on error
+                records = previousRecords;
+                masterEmployees = previousMasterEmployees;
+                saveToStorage();
+                saveMasterEmployees();
+                showToast('ไม่สามารถกู้คืนข้อมูลได้');
+            }
+        }
+
+        function showConfirmModal(title, msg, onConfirmAction) {
+            const modal = document.getElementById('modal-confirm');
+            document.getElementById('modal-confirm-title').textContent = title;
+            document.getElementById('modal-confirm-msg').textContent = msg;
+
+            document.getElementById('btn-modal-confirm-action').onclick = () => {
+                onConfirmAction();
+                closeConfirmModal();
+            };
+
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('modal-confirm-box').classList.remove('scale-95');
+            document.getElementById('modal-confirm-box').classList.add('scale-100');
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('modal-confirm');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('modal-confirm-box').classList.remove('scale-100');
+            document.getElementById('modal-confirm-box').classList.add('scale-95');
+        }
+
+        function confirmClearOTRecords() {
+            document.getElementById('data-menu-dropdown').classList.add('hidden');
+            showConfirmModal(
+                'ล้างรายการ OT ทั้งหมด?',
+                'รายการบันทึก OT ทั้งหมดจะถูกลบ และไม่สามารถกู้คืนได้',
+                () => {
+                    records = [];
+                    saveToStorage();
+                    renderRecentList();
+                    showToast('ล้างรายการ OT ทั้งหมดเรียบร้อยแล้ว');
+                }
+            );
+        }
+
+        function confirmClearEmployees() {
+            document.getElementById('data-menu-dropdown').classList.add('hidden');
+            showConfirmModal(
+                'ล้างรายชื่อพนักงานทั้งหมด?',
+                'รายชื่อพนักงานในสมุดรายชื่อจะถูกลบออกทั้งหมด',
+                () => {
+                    masterEmployees = [];
+                    saveMasterEmployees();
+                    renderMasterEmployeeList();
+                    showToast('ล้างรายชื่อพนักงานเรียบร้อยแล้ว');
+                }
+            );
+        }
+
+        function confirmClearAllData() {
+            document.getElementById('data-menu-dropdown').classList.add('hidden');
+            showConfirmModal(
+                'ล้างข้อมูลทั้งหมดในระบบ?',
+                'ข้อมูลทั้งหมดจะถูกลบและไม่สามารถกู้คืนได้',
+                () => {
+                    records = [];
+                    masterEmployees = [];
+                    localStorage.removeItem('ot_logs_simple');
+                    localStorage.removeItem('ot_employees_master');
+                    renderRecentList();
+                    showToast('ล้างข้อมูลระบบเรียบร้อยแล้ว');
+                }
+            );
+        }
+
+        // Toast Helper
+        function showToast(text) {
+            const toast = document.getElementById('toast-msg');
+            document.getElementById('toast-text').textContent = text;
+            toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
